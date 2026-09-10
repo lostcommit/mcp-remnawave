@@ -1,4 +1,6 @@
 export interface Config {
+    /** The Remnawave API release exposed by this MCP process. */
+    release: 'v2' | 'v3';
     baseUrl: string;
     apiToken: string;
     requestTimeoutMs: number;
@@ -14,6 +16,7 @@ export interface Config {
 }
 
 export function loadConfig(): Config {
+    const release = process.env.REMNAWAVE_RELEASE ?? 'v3';
     const baseUrl = process.env.REMNAWAVE_BASE_URL;
     const apiToken = process.env.REMNAWAVE_API_TOKEN;
     const apiKey = process.env.REMNAWAVE_API_KEY;
@@ -31,6 +34,9 @@ export function loadConfig(): Config {
     if (!apiToken) {
         throw new Error('REMNAWAVE_API_TOKEN environment variable is required');
     }
+    if (release !== 'v2' && release !== 'v3') {
+        throw new Error('REMNAWAVE_RELEASE must be exactly "v2" or "v3"');
+    }
     if (!Number.isInteger(requestTimeoutMs) || requestTimeoutMs < 1) {
         throw new Error('REMNAWAVE_REQUEST_TIMEOUT_MS must be a positive integer');
     }
@@ -39,6 +45,7 @@ export function loadConfig(): Config {
     }
 
     return {
+        release,
         baseUrl: baseUrl.replace(/\/+$/, ''),
         apiToken,
         requestTimeoutMs,

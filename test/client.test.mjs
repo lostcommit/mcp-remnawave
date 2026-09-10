@@ -56,6 +56,7 @@ async function startMcp(t, baseUrl, requestTimeoutMs) {
             ...process.env,
             REMNAWAVE_BASE_URL: baseUrl,
             REMNAWAVE_API_TOKEN: 'test-token',
+            REMNAWAVE_RELEASE: 'v2',
             REMNAWAVE_REQUEST_TIMEOUT_MS: String(requestTimeoutMs),
             MCP_HTTP_ENABLED: 'true',
             MCP_HTTP_HOST: '127.0.0.1',
@@ -97,7 +98,7 @@ async function createSession(port) {
     return sessionId;
 }
 
-async function callHealthTool(port, sessionId) {
+async function callTool(port, sessionId, id, name, args) {
     const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
         method: 'POST',
         headers: {
@@ -108,13 +109,17 @@ async function callHealthTool(port, sessionId) {
         },
         body: JSON.stringify({
             jsonrpc: '2.0',
-            id: 2,
+            id,
             method: 'tools/call',
-            params: { name: 'system_health', arguments: {} },
+            params: { name, arguments: args },
         }),
     });
     assert.equal(response.status, 200);
     return response.json();
+}
+
+function callHealthTool(port, sessionId) {
+    return callTool(port, sessionId, 2, 'system_health', {});
 }
 
 test('Remnawave client completes requests before the configured timeout', { timeout: 10_000 }, async (t) => {
@@ -153,4 +158,46 @@ test('Remnawave client aborts slow requests with a clear timeout error', { timeo
         result.result.content[0].text,
         /Remnawave API request timed out after 20ms/,
     );
+});
+
+test('v2 config-profile update validates the contract and forwards config content', { timeout: 10_000 }, async (t) => {
+    const requests = [];
+    const panel = await startPanel(async (request, response) => {
+        const chunks = [];
+        for await (const chunk of request) chunks.push(chunk);
+        requests.push({ method: request.method, url: request.url, body: Buffer.concat(chunks).toString() });
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ updated: true }));
+    });
+    t.after(async () => {
+        panel.server.close();
+        await once(panel.server, 'close');
+    });
+
+    const port = await startMcp(t, panel.url, 100);
+    const sessionId = await createSession(port);
+    const invalid = await callTool(port, sessionId, 3, 'config_profiles_update', {
+        uuid: 'not-a-uuid',
+        name: 'invalid!',
+    });
+    const valid = await callTool(port, sessionId, 4, 'config_profiles_update', {
+        uuid: '00000000-0000-0000-0000-000000000000',
+        name: 'profile-1',
+        config: { logLevel: 'debug', nested: { enabled: true } },
+    });
+
+    assert.ok(
+        invalid.error || invalid.result?.isError,
+        `invalid config-profile input was accepted: ${JSON.stringify(invalid)}`,
+    );
+    assert.deepEqual(requests, [{
+        method: 'PATCH',
+        url: '/api/config-profiles/',
+        body: JSON.stringify({
+            uuid: '00000000-0000-0000-0000-000000000000',
+            name: 'profile-1',
+            config: { logLevel: 'debug', nested: { enabled: true } },
+        }),
+    }]);
+    assert.equal(valid.result.isError, undefined);
 });
