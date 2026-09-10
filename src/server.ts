@@ -17,7 +17,7 @@ function registerV2(server: McpServer, config: Config): void {
 export function createServer(config: Config): McpServer {
     const server = new McpServer({
         name: 'remnawave-mcp',
-        version: '1.3.0',
+        version: '1.3.1',
     });
 
     if (config.release === 'v2') {
