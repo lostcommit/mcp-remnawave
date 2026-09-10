@@ -15,12 +15,12 @@ MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing
 ### Features
 
 - **153 tools** — full management of users, nodes, hosts, subscriptions, squads, HWID, config profiles, inbounds, API tokens, billing, snippets, external squads, settings, subscription page configs, node plugins, IP control, and metadata
-- **3 resources** — real-time panel stats, node status, health checks
+- **4 resources** — real-time panel stats, node status, health checks, and user details
 - **5 prompts** — guided workflows for common tasks
 - **Readonly mode** — restrict to 69 read-only tools for safe monitoring
 - **Caddy support** — `X-Api-Key` header for panels behind Caddy with custom path
 - **Type-safe** — built on [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract) for API route validation
-- **stdio transport** — works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible client
+- **stdio and HTTP transports** — local clients plus Streamable HTTP at `/mcp`
 
 ### Requirements
 
@@ -46,6 +46,11 @@ Create a `.env` file or pass environment variables:
 | `REMNAWAVE_API_TOKEN` | Yes | API token from panel settings |
 | `REMNAWAVE_API_KEY` | No | API key for Caddy reverse proxy authentication |
 | `REMNAWAVE_READONLY` | No | Set to `true` to enable readonly mode |
+| `CF_ACCESS_CLIENT_ID` | No | Cloudflare Access service-token client ID |
+| `CF_ACCESS_CLIENT_SECRET` | No | Cloudflare Access service-token client secret |
+| `MCP_HTTP_ENABLED` | No | Set to `true` to also serve MCP over HTTP |
+| `MCP_HTTP_HOST` | No | HTTP bind address; defaults to `127.0.0.1` |
+| `MCP_HTTP_PORT` | No | HTTP port; defaults to `3100` |
 
 ```env
 REMNAWAVE_BASE_URL=https://vpn.example.com
@@ -62,6 +67,23 @@ REMNAWAVE_API_KEY=your-caddy-api-key
 ```
 
 The `X-Api-Key` header will be added to every request automatically.
+
+### Cloudflare Access
+
+For a panel protected by Cloudflare Access, configure a service token:
+
+```env
+CF_ACCESS_CLIENT_ID=your-client-id
+CF_ACCESS_CLIENT_SECRET=your-client-secret
+```
+
+Both headers are attached to every Remnawave API request.
+
+### HTTP transport
+
+The server always supports `stdio`, for clients such as Claude Desktop. To also expose an MCP Streamable HTTP endpoint, set `MCP_HTTP_ENABLED=true`. The endpoint is `http://HOST:PORT/mcp`; a non-sensitive health probe is available at `/healthz`.
+
+HTTP is bound to `127.0.0.1` by default. Do not expose this endpoint directly to the public internet: it can operate the panel using the configured Remnawave API token. Publish it through an authenticated reverse proxy when remote access is required.
 
 ### Readonly Mode
 
@@ -137,11 +159,10 @@ Add to `.cursor/mcp.json` or `.windsurf/mcp.json` in your project:
 ### Docker
 
 ```bash
-npm run build
 docker compose up -d
 ```
 
-Environment variables are passed via `.env` file or `docker-compose.yml`.
+The image builds the application itself. Compose enables HTTP and maps it only to the host loopback interface; connect MCP clients to `http://127.0.0.1:3100/mcp`. Environment variables are passed via `.env` file or `docker-compose.yml`.
 
 ### Available Tools
 
@@ -474,12 +495,12 @@ MCP-сервер ([Model Context Protocol](https://modelcontextprotocol.io)), п
 ### Возможности
 
 - **153 инструмента** — полное управление пользователями, нодами, хостами, подписками, группами, HWID, конфиг-профилями, inbounds, API-токенами, биллингом, сниппетами, внешними группами, настройками, страницами подписок, плагинами нод, IP-контролем и метаданными
-- **3 ресурса** — статистика панели, статус нод, проверка здоровья в реальном времени
+- **4 ресурса** — статистика панели, статус нод, проверка здоровья и данные пользователя
 - **5 промптов** — пошаговые сценарии для типичных задач
 - **Readonly-режим** — ограничение до 69 инструментов только для чтения
 - **Поддержка Caddy** — заголовок `X-Api-Key` для панелей за Caddy с кастомным путём
 - **Type-safe** — построен на [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract) для валидации API-маршрутов
-- **stdio транспорт** — работает с Claude Desktop, Cursor, Windsurf и любым MCP-совместимым клиентом
+- **stdio и HTTP транспорты** — локальные клиенты и Streamable HTTP на `/mcp`
 
 ### Требования
 
@@ -505,6 +526,11 @@ npm run build
 | `REMNAWAVE_API_TOKEN` | Да | API-токен из настроек панели |
 | `REMNAWAVE_API_KEY` | Нет | API-ключ для аутентификации через Caddy reverse proxy |
 | `REMNAWAVE_READONLY` | Нет | `true` для включения режима только чтения |
+| `CF_ACCESS_CLIENT_ID` | Нет | Client ID сервисного токена Cloudflare Access |
+| `CF_ACCESS_CLIENT_SECRET` | Нет | Client secret сервисного токена Cloudflare Access |
+| `MCP_HTTP_ENABLED` | Нет | `true` для одновременного запуска MCP по HTTP |
+| `MCP_HTTP_HOST` | Нет | Адрес привязки HTTP; по умолчанию `127.0.0.1` |
+| `MCP_HTTP_PORT` | Нет | HTTP-порт; по умолчанию `3100` |
 
 ```env
 REMNAWAVE_BASE_URL=https://vpn.example.com
@@ -521,6 +547,23 @@ REMNAWAVE_API_KEY=ваш-caddy-api-ключ
 ```
 
 Заголовок `X-Api-Key` будет автоматически добавляться к каждому запросу.
+
+### Cloudflare Access
+
+Для панели, защищённой Cloudflare Access, настройте сервисный токен:
+
+```env
+CF_ACCESS_CLIENT_ID=ваш-client-id
+CF_ACCESS_CLIENT_SECRET=ваш-client-secret
+```
+
+Оба заголовка добавляются к каждому запросу к Remnawave API.
+
+### HTTP-транспорт
+
+Сервер всегда поддерживает `stdio` для клиентов вроде Claude Desktop. Чтобы также открыть MCP Streamable HTTP endpoint, установите `MCP_HTTP_ENABLED=true`. Endpoint: `http://HOST:PORT/mcp`; для проверки доступен не содержащий секретов `GET /healthz`.
+
+По умолчанию HTTP привязан к `127.0.0.1`. Не публикуйте endpoint напрямую в интернете: через него можно управлять панелью с настроенным API-токеном Remnawave. Для удалённого доступа используйте reverse proxy с аутентификацией.
 
 ### Режим Readonly
 
@@ -596,11 +639,10 @@ REMNAWAVE_API_KEY=ваш-caddy-api-ключ
 ### Docker
 
 ```bash
-npm run build
 docker compose up -d
 ```
 
-Переменные окружения передаются через `.env` файл или `docker-compose.yml`.
+Образ сам собирает приложение. Compose включает HTTP и публикует его только на loopback интерфейсе хоста; подключайте MCP-клиент к `http://127.0.0.1:3100/mcp`. Переменные окружения передаются через `.env` файл или `docker-compose.yml`.
 
 ### Доступные инструменты
 
