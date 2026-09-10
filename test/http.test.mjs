@@ -92,7 +92,7 @@ test('serves MCP requests over HTTP', { timeout: 10_000 }, async (t) => {
     assert.equal(initialize.status, 200);
     const sessionId = initialize.headers.get('mcp-session-id');
     assert.ok(sessionId);
-    assert.equal((await initialize.json()).result.serverInfo.version, '1.3.0');
+    assert.equal((await initialize.json()).result.serverInfo.version, '1.3.1');
 
     const tools = await fetch(`http://127.0.0.1:${port}/mcp`, {
         method: 'POST',
