@@ -24,7 +24,7 @@ MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing
 
 ### Requirements
 
-- Node.js >= 22
+- Node.js 22.x
 - Remnawave panel with API token (Settings > API Tokens)
 
 ### Installation
@@ -44,6 +44,7 @@ Create a `.env` file or pass environment variables:
 |----------|----------|-------------|
 | `REMNAWAVE_BASE_URL` | Yes | Panel URL (e.g. `https://vpn.example.com`) |
 | `REMNAWAVE_API_TOKEN` | Yes | API token from panel settings |
+| `REMNAWAVE_REQUEST_TIMEOUT_MS` | No | Outgoing API timeout in milliseconds; defaults to `30000` |
 | `REMNAWAVE_API_KEY` | No | API key for Caddy reverse proxy authentication |
 | `REMNAWAVE_READONLY` | No | Set to `true` to enable readonly mode |
 | `CF_ACCESS_CLIENT_ID` | No | Cloudflare Access service-token client ID |
@@ -55,6 +56,7 @@ Create a `.env` file or pass environment variables:
 ```env
 REMNAWAVE_BASE_URL=https://vpn.example.com
 REMNAWAVE_API_TOKEN=your-api-token-here
+REMNAWAVE_REQUEST_TIMEOUT_MS=30000
 ```
 
 ### Caddy with Custom Path
@@ -504,7 +506,7 @@ MCP-сервер ([Model Context Protocol](https://modelcontextprotocol.io)), п
 
 ### Требования
 
-- Node.js >= 22
+- Node.js 22.x
 - Remnawave панель с API-токеном (Настройки > API Tokens)
 
 ### Установка
@@ -524,6 +526,7 @@ npm run build
 |------------|-------------|----------|
 | `REMNAWAVE_BASE_URL` | Да | URL панели (например `https://vpn.example.com`) |
 | `REMNAWAVE_API_TOKEN` | Да | API-токен из настроек панели |
+| `REMNAWAVE_REQUEST_TIMEOUT_MS` | Нет | Таймаут исходящих API-запросов в миллисекундах; по умолчанию `30000` |
 | `REMNAWAVE_API_KEY` | Нет | API-ключ для аутентификации через Caddy reverse proxy |
 | `REMNAWAVE_READONLY` | Нет | `true` для включения режима только чтения |
 | `CF_ACCESS_CLIENT_ID` | Нет | Client ID сервисного токена Cloudflare Access |
@@ -535,6 +538,7 @@ npm run build
 ```env
 REMNAWAVE_BASE_URL=https://vpn.example.com
 REMNAWAVE_API_TOKEN=ваш-api-токен
+REMNAWAVE_REQUEST_TIMEOUT_MS=30000
 ```
 
 ### Caddy с кастомным путём

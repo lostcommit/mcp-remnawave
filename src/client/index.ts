@@ -4,9 +4,11 @@ import { Config } from '../config.js';
 export class RemnawaveClient {
     private baseUrl: string;
     private headers: Record<string, string>;
+    private requestTimeoutMs: number;
 
     constructor(config: Config) {
         this.baseUrl = config.baseUrl;
+        this.requestTimeoutMs = config.requestTimeoutMs;
         this.headers = {
             Authorization: `Bearer ${config.apiToken}`,
             'Content-Type': 'application/json',
@@ -35,20 +37,36 @@ export class RemnawaveClient {
         if (body !== undefined) {
             options.body = JSON.stringify(body);
         }
-        const res = await fetch(url, options);
-        if (!res.ok) {
-            let errorMessage: string;
-            try {
-                const errorBody = await res.json();
-                errorMessage =
-                    (errorBody as { message?: string }).message ||
-                    JSON.stringify(errorBody);
-            } catch {
-                errorMessage = `HTTP ${res.status} ${res.statusText}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+        options.signal = controller.signal;
+
+        try {
+            const res = await fetch(url, options);
+            if (!res.ok) {
+                let errorMessage: string;
+                try {
+                    const errorBody = await res.json();
+                    errorMessage =
+                        (errorBody as { message?: string }).message ||
+                        JSON.stringify(errorBody);
+                } catch {
+                    errorMessage = `HTTP ${res.status} ${res.statusText}`;
+                }
+                throw new Error(`Remnawave API error: ${errorMessage}`);
             }
-            throw new Error(`Remnawave API error: ${errorMessage}`);
+            return res.json() as Promise<T>;
+        } catch (error) {
+            if (controller.signal.aborted) {
+                throw new Error(
+                    `Remnawave API request timed out after ${this.requestTimeoutMs}ms`,
+                    { cause: error },
+                );
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeout);
         }
-        return res.json() as Promise<T>;
     }
 
     private async get<T = unknown>(path: string): Promise<T> {
