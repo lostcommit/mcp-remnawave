@@ -122,82 +122,97 @@ function callHealthTool(port, sessionId) {
     return callTool(port, sessionId, 2, 'system_health', {});
 }
 
-test('Remnawave client completes requests before the configured timeout', { timeout: 10_000 }, async (t) => {
-    const panel = await startPanel((_request, response) => {
-        response.writeHead(200, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ status: 'ok' }));
-    });
-    t.after(async () => {
-        panel.server.close();
-        await once(panel.server, 'close');
-    });
+test(
+    'Remnawave client completes requests before the configured timeout',
+    { timeout: 10_000 },
+    async (t) => {
+        const panel = await startPanel((_request, response) => {
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: 'ok' }));
+        });
+        t.after(async () => {
+            panel.server.close();
+            await once(panel.server, 'close');
+        });
 
-    const port = await startMcp(t, panel.url, 100);
-    const sessionId = await createSession(port);
-    const result = await callHealthTool(port, sessionId);
+        const port = await startMcp(t, panel.url, 100);
+        const sessionId = await createSession(port);
+        const result = await callHealthTool(port, sessionId);
 
-    assert.equal(result.result.isError, undefined);
-    assert.deepEqual(JSON.parse(result.result.content[0].text), { status: 'ok' });
-});
+        assert.equal(result.result.isError, undefined);
+        assert.deepEqual(JSON.parse(result.result.content[0].text), { status: 'ok' });
+    },
+);
 
-test('Remnawave client aborts slow requests with a clear timeout error', { timeout: 10_000 }, async (t) => {
-    const panel = await startPanel((_request, _response) => {
-        // Keep the response open until the client's AbortSignal cancels the request.
-    });
-    t.after(async () => {
-        panel.server.close();
-        await once(panel.server, 'close');
-    });
+test(
+    'Remnawave client aborts slow requests with a clear timeout error',
+    { timeout: 10_000 },
+    async (t) => {
+        const panel = await startPanel((_request, _response) => {
+            // Keep the response open until the client's AbortSignal cancels the request.
+        });
+        t.after(async () => {
+            panel.server.close();
+            await once(panel.server, 'close');
+        });
 
-    const port = await startMcp(t, panel.url, 20);
-    const sessionId = await createSession(port);
-    const result = await callHealthTool(port, sessionId);
+        const port = await startMcp(t, panel.url, 20);
+        const sessionId = await createSession(port);
+        const result = await callHealthTool(port, sessionId);
 
-    assert.equal(result.result.isError, true);
-    assert.match(
-        result.result.content[0].text,
-        /Remnawave API request timed out after 20ms/,
-    );
-});
+        assert.equal(result.result.isError, true);
+        assert.match(result.result.content[0].text, /Remnawave API request timed out after 20ms/);
+    },
+);
 
-test('v2 config-profile update validates the contract and forwards config content', { timeout: 10_000 }, async (t) => {
-    const requests = [];
-    const panel = await startPanel(async (request, response) => {
-        const chunks = [];
-        for await (const chunk of request) chunks.push(chunk);
-        requests.push({ method: request.method, url: request.url, body: Buffer.concat(chunks).toString() });
-        response.writeHead(200, { 'Content-Type': 'application/json' });
-        response.end(JSON.stringify({ updated: true }));
-    });
-    t.after(async () => {
-        panel.server.close();
-        await once(panel.server, 'close');
-    });
+test(
+    'v2 config-profile update validates the contract and forwards config content',
+    { timeout: 10_000 },
+    async (t) => {
+        const requests = [];
+        const panel = await startPanel(async (request, response) => {
+            const chunks = [];
+            for await (const chunk of request) chunks.push(chunk);
+            requests.push({
+                method: request.method,
+                url: request.url,
+                body: Buffer.concat(chunks).toString(),
+            });
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ updated: true }));
+        });
+        t.after(async () => {
+            panel.server.close();
+            await once(panel.server, 'close');
+        });
 
-    const port = await startMcp(t, panel.url, 100);
-    const sessionId = await createSession(port);
-    const invalid = await callTool(port, sessionId, 3, 'config_profiles_update', {
-        uuid: 'not-a-uuid',
-        name: 'invalid!',
-    });
-    const valid = await callTool(port, sessionId, 4, 'config_profiles_update', {
-        uuid: '00000000-0000-0000-0000-000000000000',
-        name: 'profile-1',
-        config: { logLevel: 'debug', nested: { enabled: true } },
-    });
-
-    assert.ok(
-        invalid.error || invalid.result?.isError,
-        `invalid config-profile input was accepted: ${JSON.stringify(invalid)}`,
-    );
-    assert.deepEqual(requests, [{
-        method: 'PATCH',
-        url: '/api/config-profiles/',
-        body: JSON.stringify({
+        const port = await startMcp(t, panel.url, 100);
+        const sessionId = await createSession(port);
+        const invalid = await callTool(port, sessionId, 3, 'config_profiles_update', {
+            uuid: 'not-a-uuid',
+            name: 'invalid!',
+        });
+        const valid = await callTool(port, sessionId, 4, 'config_profiles_update', {
             uuid: '00000000-0000-0000-0000-000000000000',
             name: 'profile-1',
             config: { logLevel: 'debug', nested: { enabled: true } },
-        }),
-    }]);
-    assert.equal(valid.result.isError, undefined);
-});
+        });
+
+        assert.ok(
+            invalid.error || invalid.result?.isError,
+            `invalid config-profile input was accepted: ${JSON.stringify(invalid)}`,
+        );
+        assert.deepEqual(requests, [
+            {
+                method: 'PATCH',
+                url: '/api/config-profiles/',
+                body: JSON.stringify({
+                    uuid: '00000000-0000-0000-0000-000000000000',
+                    name: 'profile-1',
+                    config: { logLevel: 'debug', nested: { enabled: true } },
+                }),
+            },
+        ]);
+        assert.equal(valid.result.isError, undefined);
+    },
+);
