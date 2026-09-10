@@ -309,11 +309,14 @@ export class RemnawaveClient {
     }
 
     async bulkSetHostInbound(params: Record<string, unknown>) {
-        return this.post(REST_API.HOSTS.BULK.SET_INBOUND, params);
+        // These two routes existed in the v2.7.4 contract but were removed
+        // from newer v2 contract packages. Keep the explicit legacy paths so
+        // REMNAWAVE_RELEASE=v2 remains compatible with 2.7.4.
+        return this.post('/api/hosts/bulk/set-inbound', params);
     }
 
     async bulkSetHostPort(params: Record<string, unknown>) {
-        return this.post(REST_API.HOSTS.BULK.SET_PORT, params);
+        return this.post('/api/hosts/bulk/set-port', params);
     }
 
     // System
