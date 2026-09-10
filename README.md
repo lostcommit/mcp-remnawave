@@ -10,16 +10,16 @@
 
 MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing LLM clients (Claude Desktop, Cursor, Windsurf, etc.) with tools to manage a [Remnawave](https://github.com/remnawave/) VPN panel.
 
-**Version:** 1.2.0 | **Remnawave API:** 2.7.4
+**Version:** 1.3.0 | **Remnawave API:** v3.4.3 OpenAPI snapshot by default; v2.7.4 compatibility mode
 
 ### Features
 
-- **153 tools** — full management of users, nodes, hosts, subscriptions, squads, HWID, config profiles, inbounds, API tokens, billing, snippets, external squads, settings, subscription page configs, node plugins, IP control, and metadata
-- **4 resources** — real-time panel stats, node status, health checks, and user details
-- **5 prompts** — guided workflows for common tasks
-- **Readonly mode** — restrict to 69 read-only tools for safe monitoring
+- **Complete v3 API coverage** — 217 generated MCP tools from the pinned official v3.4.3 OpenAPI snapshot
+- **v2.7.4 compatibility** — the existing 153-tool MCP surface remains available when explicitly selected
+- **v2 compatibility resources and prompts** — 4 real-time resources and 5 guided workflows are preserved for legacy panels
+- **Readonly mode** — safe read-only tool registration for either selected release
 - **Caddy support** — `X-Api-Key` header for panels behind Caddy with custom path
-- **Type-safe** — built on [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract) for API route validation
+- **Type-safe** — v2 uses [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract); v3 tools derive from the pinned OpenAPI contract
 - **stdio and HTTP transports** — local clients plus Streamable HTTP at `/mcp`
 
 ### Requirements
@@ -44,6 +44,7 @@ Create a `.env` file or pass environment variables:
 |----------|----------|-------------|
 | `REMNAWAVE_BASE_URL` | Yes | Panel URL (e.g. `https://vpn.example.com`) |
 | `REMNAWAVE_API_TOKEN` | Yes | API token from panel settings |
+| `REMNAWAVE_RELEASE` | No | API release: exactly `v2` or `v3`; defaults to `v3`. Set `v2` for Remnawave 2.7.4. |
 | `REMNAWAVE_REQUEST_TIMEOUT_MS` | No | Outgoing API timeout in milliseconds; defaults to `30000` |
 | `REMNAWAVE_API_KEY` | No | API key for Caddy reverse proxy authentication |
 | `REMNAWAVE_READONLY` | No | Set to `true` to enable readonly mode |
@@ -56,8 +57,15 @@ Create a `.env` file or pass environment variables:
 ```env
 REMNAWAVE_BASE_URL=https://vpn.example.com
 REMNAWAVE_API_TOKEN=your-api-token-here
+REMNAWAVE_RELEASE=v3
 REMNAWAVE_REQUEST_TIMEOUT_MS=30000
 ```
+
+### Selecting an API Release
+
+`v3` is the default and exposes 217 tools generated from the pinned Remnawave v3.4.3 OpenAPI snapshot. Tool names use `rw_v3_<operation_id>` in snake case and accept the documented `path`, `query`, and `body` values. Set `REMNAWAVE_RELEASE=v2` only for panels running the legacy 2.7.4 API; this preserves the established v2 tool names, resources, prompts, and behavior. One MCP process exposes exactly one release, so clients cannot accidentally mix v2 and v3 operations.
+
+The snapshot, checksum, and generated operation manifests are in [`openapi/`](openapi). After deliberately updating the snapshot, regenerate the derived artifacts with `npm run openapi:v3:generate`; tests verify that every documented API operation has exactly one MCP tool.
 
 ### Caddy with Custom Path
 
@@ -93,7 +101,7 @@ Set `REMNAWAVE_READONLY=true` to disable all write operations (create, update, d
 
 Useful for monitoring dashboards or shared environments where you want to prevent accidental changes.
 
-In readonly mode, the available tools are reduced from 153 to 69:
+For the v2 compatibility release, readonly mode reduces the available tools from 153 to 69:
 
 | Category | Available tools |
 |----------|----------------|
@@ -129,6 +137,7 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
       "env": {
         "REMNAWAVE_BASE_URL": "https://vpn.example.com",
         "REMNAWAVE_API_TOKEN": "your-api-token-here",
+        "REMNAWAVE_RELEASE": "v3",
         "REMNAWAVE_API_KEY": "your-caddy-api-key",
         "REMNAWAVE_READONLY": "false"
       }
@@ -150,6 +159,7 @@ Add to `.cursor/mcp.json` or `.windsurf/mcp.json` in your project:
       "env": {
         "REMNAWAVE_BASE_URL": "https://vpn.example.com",
         "REMNAWAVE_API_TOKEN": "your-api-token-here",
+        "REMNAWAVE_RELEASE": "v3",
         "REMNAWAVE_API_KEY": "your-caddy-api-key",
         "REMNAWAVE_READONLY": "false"
       }
@@ -166,7 +176,7 @@ docker compose up -d
 
 The image builds the application itself. Compose enables HTTP and maps it only to the host loopback interface; connect MCP clients to `http://127.0.0.1:3100/mcp`. Environment variables are passed via `.env` file or `docker-compose.yml`.
 
-### Available Tools
+### Available Tools (v2.7.4 compatibility release)
 
 #### Users (27 tools)
 
@@ -492,16 +502,16 @@ MIT
 
 MCP-сервер ([Model Context Protocol](https://modelcontextprotocol.io)), предоставляющий LLM-клиентам (Claude Desktop, Cursor, Windsurf и др.) инструменты для управления VPN-панелью [Remnawave](https://github.com/remnawave/).
 
-**Версия:** 1.2.0 | **Remnawave API:** 2.7.4
+**Версия:** 1.3.0 | **Remnawave API:** OpenAPI-снапшот v3.4.3 по умолчанию; режим совместимости v2.7.4
 
 ### Возможности
 
-- **153 инструмента** — полное управление пользователями, нодами, хостами, подписками, группами, HWID, конфиг-профилями, inbounds, API-токенами, биллингом, сниппетами, внешними группами, настройками, страницами подписок, плагинами нод, IP-контролем и метаданными
-- **4 ресурса** — статистика панели, статус нод, проверка здоровья и данные пользователя
-- **5 промптов** — пошаговые сценарии для типичных задач
-- **Readonly-режим** — ограничение до 69 инструментов только для чтения
+- **Полное покрытие API v3** — 217 MCP-инструментов генерируются из закреплённого официального OpenAPI-снапшота v3.4.3
+- **Совместимость с v2.7.4** — прежний MCP-интерфейс из 153 инструментов доступен при явном выборе релиза
+- **Ресурсы и промпты совместимости v2** — для старых панелей сохранены 4 динамических ресурса и 5 пошаговых сценариев
+- **Readonly-режим** — безопасная регистрация инструментов только для чтения для выбранного релиза
 - **Поддержка Caddy** — заголовок `X-Api-Key` для панелей за Caddy с кастомным путём
-- **Type-safe** — построен на [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract) для валидации API-маршрутов
+- **Типобезопасность** — v2 использует [@remnawave/backend-contract](https://www.npmjs.com/package/@remnawave/backend-contract), а инструменты v3 строятся из закреплённого OpenAPI-контракта
 - **stdio и HTTP транспорты** — локальные клиенты и Streamable HTTP на `/mcp`
 
 ### Требования
@@ -526,6 +536,7 @@ npm run build
 |------------|-------------|----------|
 | `REMNAWAVE_BASE_URL` | Да | URL панели (например `https://vpn.example.com`) |
 | `REMNAWAVE_API_TOKEN` | Да | API-токен из настроек панели |
+| `REMNAWAVE_RELEASE` | Нет | Релиз API: строго `v2` или `v3`; по умолчанию `v3`. Для Remnawave 2.7.4 установите `v2`. |
 | `REMNAWAVE_REQUEST_TIMEOUT_MS` | Нет | Таймаут исходящих API-запросов в миллисекундах; по умолчанию `30000` |
 | `REMNAWAVE_API_KEY` | Нет | API-ключ для аутентификации через Caddy reverse proxy |
 | `REMNAWAVE_READONLY` | Нет | `true` для включения режима только чтения |
@@ -538,8 +549,15 @@ npm run build
 ```env
 REMNAWAVE_BASE_URL=https://vpn.example.com
 REMNAWAVE_API_TOKEN=ваш-api-токен
+REMNAWAVE_RELEASE=v3
 REMNAWAVE_REQUEST_TIMEOUT_MS=30000
 ```
+
+### Выбор релиза API
+
+`v3` используется по умолчанию и предоставляет 217 инструментов, сгенерированных из закреплённого OpenAPI-снапшота Remnawave v3.4.3. Имена имеют формат `rw_v3_<operation_id>` в snake case; аргументы соответствуют документированным `path`, `query` и `body`. Устанавливайте `REMNAWAVE_RELEASE=v2` только для панелей со старым API 2.7.4: так сохраняются прежние имена инструментов, ресурсы, промпты и поведение v2. Один процесс MCP обслуживает только один релиз, поэтому операции v2 и v3 нельзя случайно смешать.
+
+Снапшот, контрольная сумма и сгенерированные манифесты операций находятся в [`openapi/`](openapi). После намеренного обновления снапшота выполните `npm run openapi:v3:generate`; тесты проверяют, что каждой операции API из документации соответствует ровно один MCP-инструмент.
 
 ### Caddy с кастомным путём
 
@@ -575,7 +593,7 @@ CF_ACCESS_CLIENT_SECRET=ваш-client-secret
 
 Полезно для мониторинговых дашбордов или общих окружений, где нужно исключить случайные изменения.
 
-В readonly-режиме количество доступных инструментов сокращается с 153 до 69:
+Для режима совместимости v2 readonly сокращает количество доступных инструментов с 153 до 69:
 
 | Категория | Доступные инструменты |
 |-----------|----------------------|
@@ -611,6 +629,7 @@ CF_ACCESS_CLIENT_SECRET=ваш-client-secret
       "env": {
         "REMNAWAVE_BASE_URL": "https://vpn.example.com",
         "REMNAWAVE_API_TOKEN": "ваш-api-токен",
+        "REMNAWAVE_RELEASE": "v3",
         "REMNAWAVE_API_KEY": "ваш-caddy-api-ключ",
         "REMNAWAVE_READONLY": "false"
       }
@@ -632,6 +651,7 @@ CF_ACCESS_CLIENT_SECRET=ваш-client-secret
       "env": {
         "REMNAWAVE_BASE_URL": "https://vpn.example.com",
         "REMNAWAVE_API_TOKEN": "ваш-api-токен",
+        "REMNAWAVE_RELEASE": "v3",
         "REMNAWAVE_API_KEY": "ваш-caddy-api-ключ",
         "REMNAWAVE_READONLY": "false"
       }
@@ -648,7 +668,7 @@ docker compose up -d
 
 Образ сам собирает приложение. Compose включает HTTP и публикует его только на loopback интерфейсе хоста; подключайте MCP-клиент к `http://127.0.0.1:3100/mcp`. Переменные окружения передаются через `.env` файл или `docker-compose.yml`.
 
-### Доступные инструменты
+### Доступные инструменты (режим совместимости v2.7.4)
 
 #### Пользователи (27 инструментов)
 
