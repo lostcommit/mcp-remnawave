@@ -15,19 +15,14 @@ export function registerInboundTools(
     client: RemnawaveClient,
     readonly: boolean,
 ) {
-    server.tool(
-        'config_profiles_list',
-        'List all config profiles',
-        {},
-        async () => {
-            try {
-                const result = await client.getConfigProfiles();
-                return toolResult(result);
-            } catch (e) {
-                return toolError(e);
-            }
-        },
-    );
+    server.tool('config_profiles_list', 'List all config profiles', {}, async () => {
+        try {
+            const result = await client.getConfigProfiles();
+            return toolResult(result);
+        } catch (e) {
+            return toolError(e);
+        }
+    });
 
     server.tool(
         'config_profiles_get',
@@ -45,19 +40,14 @@ export function registerInboundTools(
         },
     );
 
-    server.tool(
-        'inbounds_list',
-        'List all inbounds from all config profiles',
-        {},
-        async () => {
-            try {
-                const result = await client.getAllInbounds();
-                return toolResult(result);
-            } catch (e) {
-                return toolError(e);
-            }
-        },
-    );
+    server.tool('inbounds_list', 'List all inbounds from all config profiles', {}, async () => {
+        try {
+            const result = await client.getAllInbounds();
+            return toolResult(result);
+        } catch (e) {
+            return toolError(e);
+        }
+    });
 
     server.tool(
         'config_profiles_get_inbounds',
@@ -116,7 +106,11 @@ export function registerInboundTools(
         {
             uuid: z.string().uuid().describe('Profile UUID'),
             name: configProfileName.optional().describe('New profile name'),
-            config: z.object({}).passthrough().optional().describe('Config profile configuration object'),
+            config: z
+                .object({})
+                .passthrough()
+                .optional()
+                .describe('Config profile configuration object'),
         },
         async (params) => {
             try {
@@ -148,10 +142,14 @@ export function registerInboundTools(
         'config_profiles_reorder',
         'Reorder config profiles',
         {
-            items: z.array(z.object({
-                viewPosition: z.number().describe('Sort position (0-based)'),
-                uuid: z.string().uuid().describe('Config profile UUID'),
-            })).describe('Ordered array of { viewPosition, uuid } objects'),
+            items: z
+                .array(
+                    z.object({
+                        viewPosition: z.number().describe('Sort position (0-based)'),
+                        uuid: z.string().uuid().describe('Config profile UUID'),
+                    }),
+                )
+                .describe('Ordered array of { viewPosition, uuid } objects'),
         },
         async (params) => {
             try {

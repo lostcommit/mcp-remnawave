@@ -18,6 +18,8 @@ export interface V3ParameterDescriptor {
 export interface V3RequestBodyDescriptor {
     required?: boolean;
     description?: string;
+    schema?: unknown;
+    contentType?: string;
 }
 
 export interface V3OperationDescriptor {
@@ -46,11 +48,12 @@ export interface V3OperationInput {
 function errorMessage(body: unknown, status: number, statusText: string): string {
     if (typeof body === 'object' && body !== null) {
         const candidate = body as { message?: unknown; error?: unknown; errorCode?: unknown };
-        const message = typeof candidate.message === 'string'
-            ? candidate.message
-            : typeof candidate.error === 'string'
-                ? candidate.error
-                : undefined;
+        const message =
+            typeof candidate.message === 'string'
+                ? candidate.message
+                : typeof candidate.error === 'string'
+                  ? candidate.error
+                  : undefined;
         const code = typeof candidate.errorCode === 'string' ? ` (${candidate.errorCode})` : '';
         if (message) return `${message}${code}`;
     }
@@ -85,7 +88,8 @@ export class RemnawaveV3Client {
         };
         if (config.apiKey) this.headers['X-Api-Key'] = config.apiKey;
         if (config.cfAccessClientId) this.headers['CF-Access-Client-Id'] = config.cfAccessClientId;
-        if (config.cfAccessClientSecret) this.headers['CF-Access-Client-Secret'] = config.cfAccessClientSecret;
+        if (config.cfAccessClientSecret)
+            this.headers['CF-Access-Client-Secret'] = config.cfAccessClientSecret;
         this.secrets = [
             config.apiToken,
             config.apiKey,
@@ -117,7 +121,9 @@ export class RemnawaveV3Client {
                     // Do not include an arbitrary proxy error page in MCP output.
                     body = undefined;
                 }
-                throw new Error(this.redact(errorMessage(body, response.status, response.statusText)));
+                throw new Error(
+                    this.redact(errorMessage(body, response.status, response.statusText)),
+                );
             }
 
             if (response.status === 204 || response.headers.get('content-length') === '0') {
@@ -141,22 +147,33 @@ export class RemnawaveV3Client {
         }
     }
 
-    private interpolatePath(operation: V3OperationDescriptor, input: Record<string, unknown>): string {
+    private interpolatePath(
+        operation: V3OperationDescriptor,
+        input: Record<string, unknown>,
+    ): string {
         const template = operation.pathTemplate ?? operation.path;
-        if (!template) throw new Error(`Operation ${operation.operationId ?? operation.toolName ?? 'unknown'} has no path template`);
+        if (!template)
+            throw new Error(
+                `Operation ${operation.operationId ?? operation.toolName ?? 'unknown'} has no path template`,
+            );
         const parameters = this.pathParameters(operation);
         return template.replace(/\{([^}]+)\}/g, (_match, name: string) => {
             const value = input[name];
             if (value === undefined || value === null) {
                 const parameter = parameters.find((item) => item.name === name);
-                if (parameter?.required !== false) throw new Error(`Missing required path parameter: ${name}`);
+                if (parameter?.required !== false)
+                    throw new Error(`Missing required path parameter: ${name}`);
                 return '';
             }
             return encodeURIComponent(valueToString(value));
         });
     }
 
-    private appendQuery(search: URLSearchParams, parameters: readonly V3ParameterDescriptor[], input: Record<string, unknown>) {
+    private appendQuery(
+        search: URLSearchParams,
+        parameters: readonly V3ParameterDescriptor[],
+        input: Record<string, unknown>,
+    ) {
         for (const parameter of parameters) {
             const value = input[parameter.name];
             if (value === undefined || value === null) {
@@ -166,11 +183,15 @@ export class RemnawaveV3Client {
                 continue;
             }
             if (parameter.style === 'deepObject') {
-                if (!isRecord(value)) throw new Error(`Query parameter ${parameter.name} must be an object for deepObject serialization`);
+                if (!isRecord(value))
+                    throw new Error(
+                        `Query parameter ${parameter.name} must be an object for deepObject serialization`,
+                    );
                 for (const [key, nestedValue] of Object.entries(value)) {
                     if (nestedValue === undefined || nestedValue === null) continue;
                     if (Array.isArray(nestedValue)) {
-                        for (const item of nestedValue) search.append(`${parameter.name}[${key}]`, valueToString(item));
+                        for (const item of nestedValue)
+                            search.append(`${parameter.name}[${key}]`, valueToString(item));
                     } else {
                         search.append(`${parameter.name}[${key}]`, valueToString(nestedValue));
                     }
@@ -179,7 +200,8 @@ export class RemnawaveV3Client {
             }
             if (Array.isArray(value)) {
                 const explode = parameter.explode ?? true;
-                if (explode) value.forEach((item) => search.append(parameter.name, valueToString(item)));
+                if (explode)
+                    value.forEach((item) => search.append(parameter.name, valueToString(item)));
                 else search.append(parameter.name, value.map(valueToString).join(','));
                 continue;
             }
@@ -188,11 +210,19 @@ export class RemnawaveV3Client {
     }
 
     private pathParameters(operation: V3OperationDescriptor): readonly V3ParameterDescriptor[] {
-        return operation.pathParameters ?? operation.parameters?.filter((parameter) => parameter.in === 'path') ?? [];
+        return (
+            operation.pathParameters ??
+            operation.parameters?.filter((parameter) => parameter.in === 'path') ??
+            []
+        );
     }
 
     private queryParameters(operation: V3OperationDescriptor): readonly V3ParameterDescriptor[] {
-        return operation.queryParameters ?? operation.parameters?.filter((parameter) => parameter.in === 'query') ?? [];
+        return (
+            operation.queryParameters ??
+            operation.parameters?.filter((parameter) => parameter.in === 'query') ??
+            []
+        );
     }
 
     private redact(message: string): string {

@@ -74,30 +74,38 @@ async function listTools(port) {
     return (await response.json()).result.tools;
 }
 
-test('defaults to the v3 MCP surface when REMNAWAVE_RELEASE is absent', { timeout: 10_000 }, async (t) => {
-    const port = await getFreePort();
-    const env = {
-        ...process.env,
-        REMNAWAVE_BASE_URL: 'https://panel.example.test',
-        REMNAWAVE_API_TOKEN: 'test-token',
-        MCP_HTTP_ENABLED: 'true',
-        MCP_HTTP_HOST: '127.0.0.1',
-        MCP_HTTP_PORT: String(port),
-    };
-    delete env.REMNAWAVE_RELEASE;
-    const child = spawn(process.execPath, ['dist/index.js'], { cwd: process.cwd(), env, stdio: ['pipe', 'pipe', 'pipe'] });
-    t.after(async () => {
-        if (child.exitCode === null && child.signalCode === null) {
-            child.kill();
-            await once(child, 'exit');
-        }
-    });
-    await waitForHttpServer(child);
+test(
+    'defaults to the v3 MCP surface when REMNAWAVE_RELEASE is absent',
+    { timeout: 10_000 },
+    async (t) => {
+        const port = await getFreePort();
+        const env = {
+            ...process.env,
+            REMNAWAVE_BASE_URL: 'https://panel.example.test',
+            REMNAWAVE_API_TOKEN: 'test-token',
+            MCP_HTTP_ENABLED: 'true',
+            MCP_HTTP_HOST: '127.0.0.1',
+            MCP_HTTP_PORT: String(port),
+        };
+        delete env.REMNAWAVE_RELEASE;
+        const child = spawn(process.execPath, ['dist/index.js'], {
+            cwd: process.cwd(),
+            env,
+            stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        t.after(async () => {
+            if (child.exitCode === null && child.signalCode === null) {
+                child.kill();
+                await once(child, 'exit');
+            }
+        });
+        await waitForHttpServer(child);
 
-    const tools = await listTools(port);
-    assert.equal(tools.length, 217);
-    assert.ok(tools.every((tool) => tool.name.startsWith('rw_v3_')));
-});
+        const tools = await listTools(port);
+        assert.equal(tools.length, 217);
+        assert.ok(tools.every((tool) => tool.name.startsWith('rw_v3_')));
+    },
+);
 
 test('rejects a release other than exactly v2 or v3', { timeout: 10_000 }, async () => {
     const child = spawn(process.execPath, ['dist/index.js'], {
@@ -111,8 +119,30 @@ test('rejects a release other than exactly v2 or v3', { timeout: 10_000 }, async
         stdio: ['ignore', 'ignore', 'pipe'],
     });
     let stderr = '';
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.stderr.on('data', (chunk) => {
+        stderr += chunk;
+    });
     const [code] = await once(child, 'exit');
     assert.notEqual(code, 0);
     assert.match(stderr, /REMNAWAVE_RELEASE must be exactly "v2" or "v3"/);
+});
+
+test('rejects ambiguous boolean configuration values', { timeout: 10_000 }, async () => {
+    const child = spawn(process.execPath, ['dist/index.js'], {
+        cwd: process.cwd(),
+        env: {
+            ...process.env,
+            REMNAWAVE_BASE_URL: 'https://panel.example.test',
+            REMNAWAVE_API_TOKEN: 'test-token',
+            REMNAWAVE_READONLY: '1',
+        },
+        stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => {
+        stderr += chunk;
+    });
+    const [code] = await once(child, 'exit');
+    assert.notEqual(code, 0);
+    assert.match(stderr, /REMNAWAVE_READONLY must be exactly "true" or "false"/);
 });

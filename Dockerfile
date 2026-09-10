@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22.22.3-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -6,7 +6,7 @@ COPY tsconfig.json tsup.config.ts ./
 COPY src/ ./src/
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:22.22.3-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
